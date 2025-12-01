@@ -1,12 +1,48 @@
-<script>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Babylon.js F1 Racer</title>
+    
+    <style>
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none; /* Crucial for preventing default touch/scroll behavior */
+            z-index: 1; /* Ensure canvas is on top */
+        }
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: sans-serif;
+            z-index: 100; /* HUD should be above the canvas */
+        }
+    </style>
+    
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/cannon.js"></script>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <div id="hud">Controls: W/A/S/D | Status: <span id="status">Loading...</span></div>
+
+    <script>
         const SPEED_LIMIT = 30;
-        const ACCELERATION_FORCE = 500; // Increased force for visible movement
+        const ACCELERATION_FORCE = 500; // Increased force for movement
         const TURN_SPEED = 2.5; 
         const DRAG_FACTOR = 0.98; 
 
-        // Object to track which keys are currently pressed
         const inputMap = {};
-        
         let playerCar; // Global reference for the car body
 
         // --- 1. Scene Creation Function ---
@@ -18,17 +54,11 @@
             const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
             light.intensity = 0.7;
 
-            // Camera Setup
-            const camera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 10, -10), scene);
-            camera.radius = 12; 
-            camera.heightOffset = 4; 
-            camera.rotationOffset = 180;
-            camera.cameraAcceleration = 0.05;
-            camera.maxCameraSpeed = 50;
-            
-            // Crucially, detach default camera controls so other inputs work
-            camera.inputs.clear(); 
-            camera.attachControl(canvas, true);
+            // --- DEBUG CAMERA: ArcRotateCamera ---
+            // Allows manual mouse rotation/zoom to confirm input is working.
+            const camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 2, Math.PI / 2.5, 50, BABYLON.Vector3.Zero(), scene);
+            camera.attachControl(canvas, true); 
+            // ------------------------------------
 
             // Physics Engine Activation
             const gravityVector = new BABYLON.Vector3(0, -9.81, 0);
@@ -57,16 +87,14 @@
                 { mass: 10, friction: 0.5, restitution: 0.1 },
                 scene
             );
-            
-            // Set the camera target to the car
-            camera.lockedTarget = playerCar;
 
-            // --- 2. Input Handling (Replaced ActionManager) ---
+            // --- 2. Robust Input Handling (using standard JS events) ---
             window.addEventListener('keydown', (evt) => {
-                inputMap[evt.key.toLowerCase()] = true; // Use toLowerCase for simplicity
-                // Prevent default browser behavior (like scrolling or back button)
-                if (['w', 'a', 's', 'd'].includes(evt.key.toLowerCase())) {
-                    evt.preventDefault();
+                const key = evt.key.toLowerCase();
+                inputMap[key] = true; 
+                // Prevent default browser actions for movement keys (like scrolling)
+                if (['w', 'a', 's', 'd'].includes(key)) {
+                    evt.preventDefault(); 
                 }
             });
             
@@ -75,40 +103,37 @@
             });
 
 
-            // --- 3. Game Loop (Called every frame before render) ---
+            // --- 3. Game Loop ---
             scene.onBeforeRenderObservable.add(() => {
+                if (!playerCar || !playerCar.physicsImpostor) return;
+                
                 const physicsImpostor = playerCar.physicsImpostor;
-                if (!physicsImpostor) return;
-
                 let velocity = physicsImpostor.getLinearVelocity();
                 let currentSpeed = velocity.length();
 
-                // Get direction vectors
                 const forward = playerCar.forward;
-                
                 let force = BABYLON.Vector3.Zero();
 
-                // --- ACCELERATION (W) ---
+                // ACCELERATION (W)
                 if (inputMap["w"]) {
                     if (currentSpeed < SPEED_LIMIT) {
                          force = force.add(forward.scale(ACCELERATION_FORCE));
                     }
                 }
                 
-                // --- BRAKING/REVERSE (S) ---
+                // BRAKING/REVERSE (S)
                 if (inputMap["s"]) {
-                    // Apply reverse force or strong brake force
                     force = force.add(forward.scale(-ACCELERATION_FORCE * 0.75));
                 }
 
-                // --- TURNING (A/D) ---
+                // TURNING (A/D)
                 let torqueFactor = 0;
                 if (currentSpeed > 0.5) {
                     if (inputMap["a"]) {
-                        torqueFactor += -TURN_SPEED; // Turn left
+                        torqueFactor += -TURN_SPEED;
                     }
                     if (inputMap["d"]) {
-                        torqueFactor += TURN_SPEED; // Turn right
+                        torqueFactor += TURN_SPEED;
                     }
                 }
                 
@@ -121,7 +146,7 @@
                     physicsImpostor.setAngularVelocity(angularVelocity.scale(DRAG_FACTOR));
                 }
 
-                // Apply the calculated force explicitly at the center of mass (the car's position)
+                // Apply the calculated force
                 physicsImpostor.applyForce(force, playerCar.getAbsolutePosition());
                 
                 // Update HUD
@@ -157,17 +182,8 @@
                 engine.resize();
             });
             
-            if (status) status.innerText = "Ready!";
+            if (status) status.innerText = "Ready! Click/Drag to rotate. W/A/S/D to drive.";
         });
     </script>
-    ```
-
-### 2. Final Test
-
-1.  **Commit** the completely rewritten `index.html`.
-2.  **Hard Refresh** your game URL (`Ctrl+Shift+R`).
-3.  **Test:** Click the screen to ensure focus, then press **W, A, S, and D**.
-
-This robust input method should now capture the keys, and the increased force should make the car move visibly.
-
-Once the controls are confirmed working, we can immediately move on to **building a simple track** with walls!
+    </body>
+</html>
