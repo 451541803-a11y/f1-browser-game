@@ -1,13 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>F1 Browser Racer</title>
-    <link rel="stylesheet" href="style.css">
+    <title>F1 Browser Racer - Babylon.js</title>
+    <style>
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        /* Babylon.js requires the canvas to fill the screen */
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+    </style>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/cannon.js"></script>
+    <script src="main.js"></script>
 </head>
 <body>
-    <h1>🏁 Loading F1 Game...</h1>
-    <script src="main.js"></script>
+    <canvas id="renderCanvas"></canvas>
 </body>
 </html>
