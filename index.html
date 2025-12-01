@@ -1,46 +1,14 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Simple Babylon.js F1 Racer</title>
-    <style>
-        html, body {
-            overflow: hidden;
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
-        #renderCanvas {
-            width: 100%;
-            height: 100%;
-            touch-action: none;
-        }
-        #hud {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            font-family: sans-serif;
-            z-index: 100;
-        }
-    </style>
-    <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/cannon.js"></script>
-</head>
-<body>
-    <canvas id="renderCanvas"></canvas>
-    <div id="hud">Controls: W/A/S/D | Status: <span id="status">Loading...</span></div>
-
-    <script>
+<script>
         const SPEED_LIMIT = 30;
-        const ACCELERATION_FORCE = 50;
-        const TURN_SPEED = 2.5; // How quickly the car turns
-        const DRAG_FACTOR = 0.98; // Continuous speed reduction
+        const ACCELERATION_FORCE = 500; // Increased force for visible movement
+        const TURN_SPEED = 2.5; 
+        const DRAG_FACTOR = 0.98; 
 
         // Object to track which keys are currently pressed
         const inputMap = {};
         
+        let playerCar; // Global reference for the car body
+
         // --- 1. Scene Creation Function ---
         const createScene = function (canvas, engine) {
             const scene = new BABYLON.Scene(engine);
@@ -50,13 +18,17 @@
             const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
             light.intensity = 0.7;
 
-            // Camera Setup (We use FollowCamera to track the car)
+            // Camera Setup
             const camera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 10, -10), scene);
-            camera.radius = 12; // Distance behind the target
-            camera.heightOffset = 4; // Height above the target
-            camera.rotationOffset = 180; // Looks straight ahead (car starts facing positive Z)
+            camera.radius = 12; 
+            camera.heightOffset = 4; 
+            camera.rotationOffset = 180;
             camera.cameraAcceleration = 0.05;
             camera.maxCameraSpeed = 50;
+            
+            // Crucially, detach default camera controls so other inputs work
+            camera.inputs.clear(); 
+            camera.attachControl(canvas, true);
 
             // Physics Engine Activation
             const gravityVector = new BABYLON.Vector3(0, -9.81, 0);
@@ -74,62 +46,57 @@
                 scene
             );
             
-// Player Car (Box Model)
-            const carBody = BABYLON.MeshBuilder.CreateBox("playerCar", {width: 2, height: 1, depth: 4}, scene);
-            carBody.position.y = 1; 
-            carBody.material = new BABYLON.StandardMaterial("carMat", scene);
-            carBody.material.diffuseColor = new BABYLON.Color3(1, 0, 0); // Red Car
-            // ... rest of the car setup
-            carBody.physicsImpostor = new BABYLON.PhysicsImpostor(
-                carBody, 
+            // Player Car (Box Model)
+            playerCar = BABYLON.MeshBuilder.CreateBox("playerCar", {width: 2, height: 1, depth: 4}, scene);
+            playerCar.position.y = 1; 
+            playerCar.material = new BABYLON.StandardMaterial("carMat", scene);
+            playerCar.material.diffuseColor = new BABYLON.Color3(1, 0, 0); // Red Car
+            playerCar.physicsImpostor = new BABYLON.PhysicsImpostor(
+                playerCar, 
                 BABYLON.PhysicsImpostor.BoxImpostor, 
                 { mass: 10, friction: 0.5, restitution: 0.1 },
                 scene
             );
             
             // Set the camera target to the car
-            camera.lockedTarget = carBody;
+            camera.lockedTarget = playerCar;
 
-            // --- 2. Input Handling ---
-scene.actionManager = new BABYLON.ActionManager(scene);
-            scene.actionManager.registerAction(
-                new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyDownTrigger, function (evt) {
-                    inputMap[evt.sourceEvent.key] = true;
-                })
-            );
-            scene.actionManager.registerAction(
-                new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyUpTrigger, function (evt) {
-                    inputMap[evt.sourceEvent.key] = false;
-                })
-            );
+            // --- 2. Input Handling (Replaced ActionManager) ---
+            window.addEventListener('keydown', (evt) => {
+                inputMap[evt.key.toLowerCase()] = true; // Use toLowerCase for simplicity
+                // Prevent default browser behavior (like scrolling or back button)
+                if (['w', 'a', 's', 'd'].includes(evt.key.toLowerCase())) {
+                    evt.preventDefault();
+                }
+            });
+            
+            window.addEventListener('keyup', (evt) => {
+                inputMap[evt.key.toLowerCase()] = false;
+            });
+
 
             // --- 3. Game Loop (Called every frame before render) ---
             scene.onBeforeRenderObservable.add(() => {
-                const physicsImpostor = carBody.physicsImpostor;
+                const physicsImpostor = playerCar.physicsImpostor;
                 if (!physicsImpostor) return;
 
                 let velocity = physicsImpostor.getLinearVelocity();
                 let currentSpeed = velocity.length();
 
                 // Get direction vectors
-                const forward = carBody.forward;
-                const right = carBody.right;
+                const forward = playerCar.forward;
                 
                 let force = BABYLON.Vector3.Zero();
 
-             // --- ACCELERATION (W) ---
-                if (inputMap["w"] || inputMap["W"]) {
-                    // NEW DEBUG LINE HERE
-                    console.log("W Key is Active! Applying force."); 
-                    
+                // --- ACCELERATION (W) ---
+                if (inputMap["w"]) {
                     if (currentSpeed < SPEED_LIMIT) {
                          force = force.add(forward.scale(ACCELERATION_FORCE));
                     }
                 }
-                // ... (Continue the rest of the code)
                 
                 // --- BRAKING/REVERSE (S) ---
-                if (inputMap["s"] || inputMap["S"]) {
+                if (inputMap["s"]) {
                     // Apply reverse force or strong brake force
                     force = force.add(forward.scale(-ACCELERATION_FORCE * 0.75));
                 }
@@ -137,10 +104,10 @@ scene.actionManager = new BABYLON.ActionManager(scene);
                 // --- TURNING (A/D) ---
                 let torqueFactor = 0;
                 if (currentSpeed > 0.5) {
-                    if (inputMap["a"] || inputMap["A"]) {
+                    if (inputMap["a"]) {
                         torqueFactor += -TURN_SPEED; // Turn left
                     }
-                    if (inputMap["d"] || inputMap["D"]) {
+                    if (inputMap["d"]) {
                         torqueFactor += TURN_SPEED; // Turn right
                     }
                 }
@@ -149,13 +116,13 @@ scene.actionManager = new BABYLON.ActionManager(scene);
                 if (torqueFactor !== 0) {
                     physicsImpostor.setAngularVelocity(new BABYLON.Vector3(0, torqueFactor, 0));
                 } else {
-                    // Reduce angular velocity when not turning to prevent infinite spinning
+                    // Reduce angular velocity when not turning
                     let angularVelocity = physicsImpostor.getAngularVelocity();
                     physicsImpostor.setAngularVelocity(angularVelocity.scale(DRAG_FACTOR));
                 }
 
-                // Apply the calculated force
-                physicsImpostor.applyForce(force, carBody.getAbsolutePosition());
+                // Apply the calculated force explicitly at the center of mass (the car's position)
+                physicsImpostor.applyForce(force, playerCar.getAbsolutePosition());
                 
                 // Update HUD
                 const speedKPH = (currentSpeed * 3.6).toFixed(1);
@@ -172,7 +139,7 @@ scene.actionManager = new BABYLON.ActionManager(scene);
             const status = document.getElementById('status');
             
             if (!canvas) {
-                console.error("Canvas element not found!");
+                console.error("CRITICAL ERROR: Canvas element was not found.");
                 if (status) status.innerText = "Error: Canvas not found.";
                 return;
             }
@@ -193,5 +160,14 @@ scene.actionManager = new BABYLON.ActionManager(scene);
             if (status) status.innerText = "Ready!";
         });
     </script>
-    </body>
-</html>
+    ```
+
+### 2. Final Test
+
+1.  **Commit** the completely rewritten `index.html`.
+2.  **Hard Refresh** your game URL (`Ctrl+Shift+R`).
+3.  **Test:** Click the screen to ensure focus, then press **W, A, S, and D**.
+
+This robust input method should now capture the keys, and the increased force should make the car move visibly.
+
+Once the controls are confirmed working, we can immediately move on to **building a simple track** with walls!
