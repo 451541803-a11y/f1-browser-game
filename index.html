@@ -91,7 +91,7 @@
             camera.lockedTarget = carBody;
 
             // --- 2. Input Handling ---
-            scene.actionManager = new BABYLON.ActionManager(scene);
+scene.actionManager = new BABYLON.ActionManager(scene);
             scene.actionManager.registerAction(
                 new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyDownTrigger, function (evt) {
                     inputMap[evt.sourceEvent.key] = true;
