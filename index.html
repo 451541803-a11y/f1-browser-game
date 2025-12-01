@@ -117,12 +117,16 @@ scene.actionManager = new BABYLON.ActionManager(scene);
                 
                 let force = BABYLON.Vector3.Zero();
 
-                // --- ACCELERATION (W) ---
+             // --- ACCELERATION (W) ---
                 if (inputMap["w"] || inputMap["W"]) {
+                    // NEW DEBUG LINE HERE
+                    console.log("W Key is Active! Applying force."); 
+                    
                     if (currentSpeed < SPEED_LIMIT) {
                          force = force.add(forward.scale(ACCELERATION_FORCE));
                     }
                 }
+                // ... (Continue the rest of the code)
                 
                 // --- BRAKING/REVERSE (S) ---
                 if (inputMap["s"] || inputMap["S"]) {
