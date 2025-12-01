@@ -74,11 +74,12 @@
                 scene
             );
             
-            // Player Car (Box Model)
+// Player Car (Box Model)
             const carBody = BABYLON.MeshBuilder.CreateBox("playerCar", {width: 2, height: 1, depth: 4}, scene);
             carBody.position.y = 1; 
             carBody.material = new BABYLON.StandardMaterial("carMat", scene);
             carBody.material.diffuseColor = new BABYLON.Color3(1, 0, 0); // Red Car
+            // ... rest of the car setup
             carBody.physicsImpostor = new BABYLON.PhysicsImpostor(
                 carBody, 
                 BABYLON.PhysicsImpostor.BoxImpostor, 
