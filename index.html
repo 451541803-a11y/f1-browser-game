@@ -151,7 +151,7 @@ scene.actionManager = new BABYLON.ActionManager(scene);
                 }
 
                 // Apply the calculated force
-                physicsImpostor.applyForce(force, carBody.position);
+                physicsImpostor.applyForce(force, carBody.getAbsolutePosition());
                 
                 // Update HUD
                 const speedKPH = (currentSpeed * 3.6).toFixed(1);
